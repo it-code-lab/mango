@@ -35,7 +35,7 @@ class SceneGenerator:
         draw.text((50, 50), f"Scene: {scene_name}\nStyle: {style}", fill=(0, 0, 0))
 
         # Save the scene
-        file_name = f"{scene_name.lower().replace(' ', '_')}_{style}.png"
+        file_name = os.path.join(self.asset_library_path, "backgrounds", f"{scene_name.lower().replace(' ', '_')}_{style}.png")
         img.save(file_name)
         return file_name
 
@@ -53,7 +53,6 @@ class SceneGenerator:
     def scale_scene(self, scene_path, resolution):
         """Scale the scene to the specified resolution."""
         scene = Image.open(scene_path)
-        #scaled_scene = scene.resize(resolution, Image.ANTIALIAS)
         scaled_scene = scene.resize(resolution, Image.Resampling.LANCZOS)
 
         # Save the scaled scene
@@ -63,13 +62,13 @@ class SceneGenerator:
 
     def get_assets(self):
         """List available assets from the asset library."""
-        return [f for f in os.listdir(self.asset_library_path) if f.endswith('.png')]
+        return {category: self.get_assets_by_category(category) for category in os.listdir(self.asset_library_path) if os.path.isdir(os.path.join(self.asset_library_path, category))}
 
-    def add_asset_to_scene(self, base_scene_path, asset_name, position=(0, 0)):
+    def add_asset_to_scene(self, base_scene_path, asset_category, asset_name, position=(0, 0)):
         """Add an asset from the library to the base scene."""
-        asset_path = os.path.join(self.asset_library_path, asset_name)
+        asset_path = os.path.join(self.asset_library_path, asset_category, asset_name)
         if not os.path.exists(asset_path):
-            raise FileNotFoundError(f"Asset '{asset_name}' not found in the library.")
+            raise FileNotFoundError(f"Asset '{asset_name}' not found in category '{asset_category}'.")
 
         return self.add_layer(base_scene_path, asset_path, position)
 
@@ -118,9 +117,9 @@ if __name__ == "__main__":
     print("Available Assets:", assets)
 
     # Add an asset
-    updated_scene = generator.add_asset_to_scene(scene_path, "props/tree.png", position=(100, 100))
+    updated_scene = generator.add_asset_to_scene(scene_path, "props", "tree.png", position=(100, 100))
     print(f"Scene with Asset: {updated_scene}")
 
     # Animate the scene
-    animated_scene = generator.animate_scene(scene_path, "animations/moving_clouds")
+    animated_scene = generator.animate_scene(scene_path, "moving_clouds")
     print(f"Animated Scene: {animated_scene}")
