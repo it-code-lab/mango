@@ -199,8 +199,16 @@ class AnimationTool(QMainWindow):
 
     def generate_scene(self):
         """Generate a scene and display it in the preview window."""
-        scene_path = self.scene_generator.generate_scene("NewScene", "cartoon")
-        self.show_image(scene_path)
+        try:
+            scene_path = self.scene_generator.generate_scene("NewScene", "cartoon")
+            if os.path.exists(scene_path):
+                print(f"Generated Scene: {scene_path}")
+                self.show_image(scene_path)
+            else:
+                print("Error: Scene was not generated.")
+        except Exception as e:
+            print(f"Error generating scene: {e}")
+
 
     def add_motion(self):
         """Apply motion to the scene."""

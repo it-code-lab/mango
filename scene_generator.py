@@ -42,16 +42,24 @@ class SceneGenerator:
     def generate_scene(self, scene_name, style="realistic", resolution=(1920, 1080)):
         """Generate a scene with background and save it."""
         scene_dir = "output/scenes"
-        os.makedirs(scene_dir, exist_ok=True)
+        os.makedirs(scene_dir, exist_ok=True)  # Ensure output directory exists
 
         # Select a default background
         backgrounds = self.get_assets_by_category("backgrounds")
         bg_path = os.path.join(self.asset_library_path, "backgrounds", backgrounds[0]) if backgrounds else None
 
-        img = Image.open(bg_path) if bg_path else Image.new('RGB', resolution, color=self._get_background_color(style))
+        if bg_path and os.path.exists(bg_path):
+            img = Image.open(bg_path)
+        else:
+            print("Warning: No background found. Using default color.")
+            img = Image.new('RGB', resolution, color=self._get_background_color(style))
+
         file_name = os.path.join(scene_dir, f"{scene_name.lower().replace(' ', '_')}_{style}.png")
         img.save(file_name)
+
+        print(f"Scene generated and saved at: {file_name}")  # ✅ Print file path
         return file_name
+
 
     def add_layer(self, base_scene_path, layer_image_path, position=(0, 0)):
         """Add a layer (foreground or mid-ground) to the base scene."""
