@@ -13,6 +13,7 @@ class AudioIntegration:
         """Generate TTS audio with support for multiple languages and accents."""
         tts = gTTS(text=text, lang=language, tld=accent if accent else "com")
         tts.save(output_file)
+        print(f"Generated TTS Audio: {output_file}")
         return output_file
 
     def add_background_music(self, audio_file, music_file, output_file="output_with_music.mp3", volume_adjustment=-10):

@@ -18,6 +18,9 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsView, QGraphicsTextItem
 from PyQt6.QtGui import QPixmap
 from PIL import Image
+from PyQt6.QtWidgets import QGraphicsPixmapItem
+from PyQt6.QtWidgets import QGraphicsScene, QGraphicsView, QVBoxLayout, QSplitter
+from PyQt6.QtWidgets import QSizePolicy
 
 class AnimationTool(QMainWindow):
     def __init__(self):
@@ -82,16 +85,25 @@ class AnimationTool(QMainWindow):
         self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_label.setStyleSheet("border: 2px solid black;")
 
-        preview_scene = QGraphicsScene()
-        self.preview_view = QGraphicsView(preview_scene)
+        # Increase Animation Preview Size & Make It Resizable
+        self.preview_scene = QGraphicsScene()
+        self.preview_view = QGraphicsView(self.preview_scene)
+        self.preview_view.setMinimumSize(600, 400)  # ✅ Increase default size
+        self.preview_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)  # ✅ Make resizable
+
+        # Use Splitter to Allow Resizing
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.addWidget(self.preview_view)
 
         center_layout = QVBoxLayout()
         center_layout.addWidget(QLabel("Animation Preview"))
-        center_layout.addWidget(self.preview_view)
+        center_layout.addWidget(splitter)
 
         center_frame = QFrame()
         center_frame.setLayout(center_layout)
         center_frame.setFrameShape(QFrame.Shape.StyledPanel)
+
+        main_layout.addWidget(center_frame)  # ✅ Update main layout
 
         # ====== Bottom Panel (Timeline) ======
         self.timeline_label = QLabel("Timeline Editor")
@@ -158,6 +170,84 @@ class AnimationTool(QMainWindow):
         
         main_layout.addWidget(bottom_frame)
 
+        # Enable Drag-and-Drop for Asset Library
+        self.asset_list.setDragEnabled(True)
+        self.asset_list.setAcceptDrops(True)
+
+        # Enable dropping assets into the scene
+        #self.preview_scene = QGraphicsScene()
+        #self.preview_view.setScene(self.preview_scene)
+        self.preview_view.setAcceptDrops(True)
+
+        # Connect drag-and-drop event
+        self.preview_view.dragEnterEvent = self.dragEnterEvent
+        self.preview_view.dropEvent = self.dropEvent
+
+        # Make Timeline Interactive
+        self.timeline_list.setDragEnabled(True)
+        self.timeline_list.setAcceptDrops(True)
+
+        self.timeline_view.setAcceptDrops(True)
+        self.timeline_view.dragEnterEvent = self.dragEnterEvent
+        self.timeline_view.dropEvent = self.dropEvent
+
+        # Initialize QGraphicsScene for preview
+        self.preview_scene = QGraphicsScene()
+        self.preview_view.setScene(self.preview_scene)
+
+    def populate_asset_categories(self):
+        """List asset categories (Backgrounds, Characters, Props, Audio) in the library."""
+        self.asset_list.clear()
+        asset_folders = ["backgrounds", "characters", "props", "audio"]
+        for folder in asset_folders:
+            if os.path.exists(os.path.join(self.scene_generator.asset_library_path, folder)):
+                self.asset_list.addItem(folder)
+
+    def load_asset_files(self, item):
+        """Show actual files inside the selected asset category."""
+        category = item.text()
+        asset_path = os.path.join(self.scene_generator.asset_library_path, category)
+        
+        self.asset_list.clear()  # ✅ Clear the list and show actual assets
+        self.asset_list.addItem(".. (Back)")  # ✅ Allow going back to categories
+
+        for file in os.listdir(asset_path):
+            if file.endswith((".png", ".jpg", ".gif")):  # ✅ Show only images
+                self.asset_list.addItem(file)
+
+    def dropEvent(self, event):
+        """Drop an animation onto the timeline."""
+        selected_event = self.timeline_list.currentItem()
+        if not selected_event:
+            return
+
+        text = selected_event.text()
+        timeline_item = QGraphicsTextItem(text)
+        timeline_item.setPos(50, 10)  # Default timeline position
+        self.timeline_scene.addItem(timeline_item)
+
+    def dragEnterEvent(self, event):
+        """Enable dragging assets into the scene."""
+        event.accept()
+
+    def dropEvent(self, event):
+        """Drop asset into the scene."""
+        selected_item = self.asset_list.currentItem()
+        if not selected_item:
+            return
+
+        asset_category = selected_item.text()
+        assets = self.scene_generator.get_assets_by_category(asset_category)
+
+        if assets:
+            asset_path = os.path.join("assets", asset_category, assets[0])
+            pixmap = QPixmap(asset_path)
+            item = QGraphicsPixmapItem(pixmap)
+            item.setPos(100, 100)  # Default position
+            self.preview_scene.addItem(item)
+
+            print(f"Added {assets[0]} to scene")
+
     def asset_selected(self, item):
         """Preview selected asset before adding it to the scene."""
         category = item.text()
@@ -198,12 +288,12 @@ class AnimationTool(QMainWindow):
             print(f"Project saved: {project_file}")
 
     def generate_scene(self):
-        """Generate a scene and display it in the preview window."""
+        """Generate a scene and display it in the Animation Preview."""
         try:
             scene_path = self.scene_generator.generate_scene("NewScene", "cartoon")
             if os.path.exists(scene_path):
                 print(f"Generated Scene: {scene_path}")
-                self.show_image(scene_path)
+                self.show_image(scene_path)  # ✅ Display Scene in Preview
             else:
                 print("Error: Scene was not generated.")
         except Exception as e:
@@ -211,12 +301,24 @@ class AnimationTool(QMainWindow):
 
 
     def add_motion(self):
-        """Apply motion to the scene."""
-        motion_path = self.motion_automation.apply_motion("Character", "walk", save_as_gif=True)
-        self.show_image(motion_path)
+        """Move character inside the scene."""
+        selected_item = self.preview_scene.items()[0]  # Get first character/item
+        if not isinstance(selected_item, QGraphicsPixmapItem):
+            print("No character selected for motion")
+            return
+
+        # Define motion path
+        positions = [(100, 100), (200, 100), (300, 100), (400, 100)]
+
+        def move_character(step=0):
+            if step < len(positions):
+                selected_item.setPos(*positions[step])
+                QTimer.singleShot(500, lambda: move_character(step + 1))  # Move every 500ms
+
+        move_character()
 
     def show_image(self, image_path):
-        """Display an image in the UI preview panel, ensuring no ICC profile issues."""
+        """Display an image in the UI preview panel using QGraphicsView."""
         if not os.path.exists(image_path):
             print(f"Error: Image file {image_path} does not exist.")
             return
@@ -229,9 +331,11 @@ class AnimationTool(QMainWindow):
         except Exception as e:
             print(f"Warning: Could not remove ICC profile from {image_path} - {e}")
 
-        # Display the image
+        # Display in QGraphicsView
         pixmap = QPixmap(image_path)
-        self.preview_label.setPixmap(pixmap)
+        self.preview_scene.clear()  # Clear previous preview
+        item = QGraphicsPixmapItem(pixmap)
+        self.preview_scene.addItem(item)
 
     def add_audio(self):
         """Generate and add audio to the scene."""

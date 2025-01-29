@@ -24,40 +24,31 @@ class SceneGenerator:
                 all_assets[category] = self.get_assets_by_category(category)
         return all_assets
     
-    def generate_scene_old(self, scene_name, style="realistic", resolution=(1920, 1080)):
-        """Generate a scene with the specified name, style, and resolution."""
-        # Define background color based on style
-        background_color = self._get_background_color(style)
-
-        # Create a blank image for the scene
-        img = Image.new('RGB', resolution, color=background_color)
-        draw = ImageDraw.Draw(img)
-        draw.text((50, 50), f"Scene: {scene_name}\nStyle: {style}", fill=(0, 0, 0))
-
-        # Save the scene
-        file_name = os.path.join(self.asset_library_path, "backgrounds", f"{scene_name.lower().replace(' ', '_')}_{style}.png")
-        img.save(file_name)
-        return file_name
-
-    def generate_scene(self, scene_name, style="realistic", resolution=(1920, 1080)):
-        """Generate a scene with background and save it."""
+    def generate_scene(self, scene_name, style="realistic", resolution=(1920, 1080), layers=None):
+        """Generate a layered scene and save it."""
         scene_dir = "output/scenes"
-        os.makedirs(scene_dir, exist_ok=True)  # Ensure output directory exists
+        os.makedirs(scene_dir, exist_ok=True)
 
-        # Select a default background
+        # Select default background
         backgrounds = self.get_assets_by_category("backgrounds")
         bg_path = os.path.join(self.asset_library_path, "backgrounds", backgrounds[0]) if backgrounds else None
 
         if bg_path and os.path.exists(bg_path):
-            img = Image.open(bg_path)
+            base_scene = Image.open(bg_path).convert("RGBA")
         else:
             print("Warning: No background found. Using default color.")
-            img = Image.new('RGB', resolution, color=self._get_background_color(style))
+            base_scene = Image.new('RGBA', resolution, color=self._get_background_color(style))
+
+        # Add layers (Foreground, Midground, Background)
+        if layers:
+            for layer in layers:
+                layer_path = os.path.join(self.asset_library_path, layer['category'], layer['name'])
+                if os.path.exists(layer_path):
+                    layer_img = Image.open(layer_path).convert("RGBA")
+                    base_scene.paste(layer_img, layer.get("position", (0, 0)), mask=layer_img)
 
         file_name = os.path.join(scene_dir, f"{scene_name.lower().replace(' ', '_')}_{style}.png")
-        img.save(file_name)
-
-        print(f"Scene generated and saved at: {file_name}")  # ✅ Print file path
+        base_scene.save(file_name)
         return file_name
 
 

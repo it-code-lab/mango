@@ -11,7 +11,9 @@ class MotionAutomation:
             "walk": self._walk_animation,
             "jump": self._jump_animation,
             "bounce": self._bounce_animation,
-            "zigzag": self._zigzag_motion
+            "zigzag": self._zigzag_motion,
+            "scale": self._scaling_motion,  # ✅ New
+            "rotate": self._rotation_motion  # ✅ New
         }
 
     def apply_motion_old(self, character, motion_type, duration=2, preview=False, save_as_gif=True):
@@ -34,6 +36,9 @@ class MotionAutomation:
 
     def apply_motion(self, character, motion_type, duration=2, save_as_gif=True):
         """Apply motion to a character and optionally save it as a GIF."""
+        if motion_type not in self.preset_animations:
+            raise ValueError(f"Unsupported motion type: {motion_type}")
+
         positions = self.preset_animations[motion_type](duration)
 
         if save_as_gif:
@@ -44,21 +49,37 @@ class MotionAutomation:
 
         return positions
 
-    def _save_motion_as_gif(self, positions, output_file="output/motion_animation.gif", image_size=(400, 400)):
+    def _save_motion_as_gif(self, positions, output_file, image_size=(400, 400)):
         """Save the character motion as an animated GIF."""
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
         frames = []
-
-        for pos in positions:
-            img = Image.new("RGB", image_size, "white")
+        for i, pos in enumerate(positions):
+            img = Image.new("RGBA", image_size, "white")
             draw = ImageDraw.Draw(img)
-            x, y = int(pos[0] * 20), int(image_size[1] - pos[1] * 20)  # Scale positions
-            draw.ellipse((x-10, y-10, x+10, y+10), fill="blue")  # Character representation
-            frames.append(img)
+            x, y = 200, 200  # Center point
+            scale = pos[1] if isinstance(pos[1], (float, int)) else 1
+            rotation = pos[0] if isinstance(pos[0], (float, int)) else 0
 
-        # Save as GIF
+            # Apply scaling and rotation
+            ellipse_size = int(20 * scale)
+            rotated_img = img.rotate(rotation)
+            draw.ellipse((x - ellipse_size, y - ellipse_size, x + ellipse_size, y + ellipse_size), fill="blue")
+
+            frames.append(rotated_img)
+
         frames[0].save(output_file, save_all=True, append_images=frames[1:], duration=50, loop=0)
         return output_file
+    
+
+    def _scaling_motion(self, duration):
+        """Simulate a scaling effect."""
+        t = np.linspace(0, duration, num=30)
+        scales = np.linspace(1, 2, num=15).tolist() + np.linspace(2, 1, num=15).tolist()
+        return [(1, scale) for scale in scales]  # Keep X constant, only change scale
+
+    def _rotation_motion(self, duration):
+        """Simulate a rotation effect."""
+        angles = np.linspace(0, 360, num=30)
+        return [(angle, 0) for angle in angles]  # Keep Y constant, only change rotation
 
     def _walk_animation(self, duration):
         """Simulate a walking motion (linear movement)."""

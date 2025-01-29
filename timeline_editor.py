@@ -1,13 +1,38 @@
 import matplotlib.pyplot as plt
 from collections import defaultdict
 
+from motion_automation import MotionAutomation
+
 class TimelineEditor:
     def __init__(self):
         self.timeline = []
         self.undo_stack = []
         self.redo_stack = []
         self.event_groups = defaultdict(list)
+        self.keyframes = defaultdict(list)
 
+    def add_keyframe(self, timestamp, event, character):
+        """Add a keyframe for animation control."""
+        self.keyframes[character].append({"timestamp": timestamp, "event": event})
+        self.keyframes[character] = sorted(self.keyframes[character], key=lambda x: x["timestamp"])
+
+    def get_keyframes(self, character):
+        """Retrieve keyframes for a character."""
+        return self.keyframes.get(character, [])
+
+    def sync_with_motion(self, motion_type, character, duration):
+        """Auto-generate keyframes based on motion type."""
+        positions = MotionAutomation().apply_motion(character, motion_type, duration, save_as_gif=False)
+        for i, pos in enumerate(positions):
+            self.add_keyframe(i * (duration / len(positions)), {"position": pos}, character)
+
+    def display_timeline(self):
+        """Display all timeline events."""
+        for character, keyframes in self.keyframes.items():
+            print(f"Timeline for {character}:")
+            for kf in keyframes:
+                print(f"  {kf['timestamp']}s -> {kf['event']}")
+                
     def add_event(self, timestamp, event, group=None):
         """Add an event to the timeline."""
         self.undo_stack.append(("remove", timestamp, event, group))
