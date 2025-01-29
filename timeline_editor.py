@@ -13,6 +13,7 @@ class TimelineEditor:
         self.undo_stack.append(("remove", timestamp, event, group))
         self.redo_stack.clear()
         self.timeline.append({"timestamp": timestamp, "event": event})
+        self.timeline.sort(key=lambda x: x['timestamp'])  # Keep events in order
         if group:
             self.event_groups[group].append({"timestamp": timestamp, "event": event})
         self.timeline.sort(key=lambda x: x['timestamp'])

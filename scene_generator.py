@@ -24,7 +24,7 @@ class SceneGenerator:
                 all_assets[category] = self.get_assets_by_category(category)
         return all_assets
     
-    def generate_scene(self, scene_name, style="realistic", resolution=(1920, 1080)):
+    def generate_scene_old(self, scene_name, style="realistic", resolution=(1920, 1080)):
         """Generate a scene with the specified name, style, and resolution."""
         # Define background color based on style
         background_color = self._get_background_color(style)
@@ -36,6 +36,16 @@ class SceneGenerator:
 
         # Save the scene
         file_name = os.path.join(self.asset_library_path, "backgrounds", f"{scene_name.lower().replace(' ', '_')}_{style}.png")
+        img.save(file_name)
+        return file_name
+
+    def generate_scene(self, scene_name, style="realistic", resolution=(1920, 1080)):
+        """Generate a scene with assets and store it in the output folder."""
+        scene_dir = "output/scenes"
+        os.makedirs(scene_dir, exist_ok=True)
+
+        file_name = os.path.join(scene_dir, f"{scene_name.lower().replace(' ', '_')}_{style}.png")
+        img = Image.new('RGB', resolution, color=self._get_background_color(style))
         img.save(file_name)
         return file_name
 

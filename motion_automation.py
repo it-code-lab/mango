@@ -1,6 +1,9 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from PIL import Image, ImageDraw  
+
 
 class MotionAutomation:
     def __init__(self):
@@ -11,7 +14,7 @@ class MotionAutomation:
             "zigzag": self._zigzag_motion
         }
 
-    def apply_motion(self, character, motion_type, duration=2, preview=False):
+    def apply_motion_old(self, character, motion_type, duration=2, preview=False, save_as_gif=True):
         """Apply motion to a character with optional real-time preview."""
         if motion_type in self.preset_animations:
             motion_function = self.preset_animations[motion_type]
@@ -20,9 +23,42 @@ class MotionAutomation:
             if preview:
                 self._preview_motion(positions, motion_type)
 
-            return positions
+                return positions
+            if save_as_gif:
+                output_file = f"output/motion/{character}_{motion_type}.gif"
+                os.makedirs("output/motion", exist_ok=True)
+                self._save_motion_as_gif(positions, output_file)
+                return output_file
         else:
             raise ValueError("Unsupported motion type")
+
+    def apply_motion(self, character, motion_type, duration=2, save_as_gif=True):
+        """Apply motion to a character and optionally save it as a GIF."""
+        positions = self.preset_animations[motion_type](duration)
+
+        if save_as_gif:
+            output_file = f"output/motion/{character}_{motion_type}.gif"
+            os.makedirs("output/motion", exist_ok=True)
+            self._save_motion_as_gif(positions, output_file)
+            return output_file
+
+        return positions
+
+    def _save_motion_as_gif(self, positions, output_file="output/motion_animation.gif", image_size=(400, 400)):
+        """Save the character motion as an animated GIF."""
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        frames = []
+
+        for pos in positions:
+            img = Image.new("RGB", image_size, "white")
+            draw = ImageDraw.Draw(img)
+            x, y = int(pos[0] * 20), int(image_size[1] - pos[1] * 20)  # Scale positions
+            draw.ellipse((x-10, y-10, x+10, y+10), fill="blue")  # Character representation
+            frames.append(img)
+
+        # Save as GIF
+        frames[0].save(output_file, save_all=True, append_images=frames[1:], duration=50, loop=0)
+        return output_file
 
     def _walk_animation(self, duration):
         """Simulate a walking motion (linear movement)."""
