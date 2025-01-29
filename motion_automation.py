@@ -1,8 +1,86 @@
-def apply_motion(character, motion_type, duration):
-    """Automate motion for a character."""
-    motions = {
-        "walk": f"{character} walks for {duration} seconds.",
-        "wave": f"{character} waves for {duration} seconds.",
-        "jump": f"{character} jumps for {duration} seconds."
-    }
-    return motions.get(motion_type, "Unknown motion type")
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+class MotionAutomation:
+    def __init__(self):
+        self.preset_animations = {
+            "walk": self._walk_animation,
+            "jump": self._jump_animation,
+            "bounce": self._bounce_animation,
+            "zigzag": self._zigzag_motion
+        }
+
+    def apply_motion(self, character, motion_type, duration=2, preview=False):
+        """Apply motion to a character with optional real-time preview."""
+        if motion_type in self.preset_animations:
+            motion_function = self.preset_animations[motion_type]
+            positions = motion_function(duration)
+            
+            if preview:
+                self._preview_motion(positions, motion_type)
+
+            return positions
+        else:
+            raise ValueError("Unsupported motion type")
+
+    def _walk_animation(self, duration):
+        """Simulate a walking motion (linear movement)."""
+        t = np.linspace(0, duration, num=30)
+        x = np.linspace(0, 10, num=30)
+        y = np.sin(4 * np.pi * t) * 0.5
+        return list(zip(x, y))
+
+    def _jump_animation(self, duration):
+        """Simulate a jumping motion with gravity effect."""
+        t = np.linspace(0, duration, num=30)
+        y = -4 * (t - duration / 2) ** 2 + duration
+        x = np.linspace(0, 5, num=30)
+        return list(zip(x, y))
+
+    def _bounce_animation(self, duration):
+        """Simulate a bouncing motion."""
+        t = np.linspace(0, duration, num=30)
+        y = np.abs(np.sin(3 * np.pi * t) * 3)
+        x = np.linspace(0, 5, num=30)
+        return list(zip(x, y))
+    
+    def _zigzag_motion(self, duration):
+        """Simulate a zigzag motion pattern."""
+        t = np.linspace(0, duration, num=30)
+        x = np.linspace(0, 10, num=30)
+        y = np.sin(3 * np.pi * x / 10) * 2
+        return list(zip(x, y))
+
+    def _preview_motion(self, positions, motion_type):
+        """Render a real-time preview of the motion."""
+        plt.figure(figsize=(6, 4))
+        plt.title(f"Motion Preview: {motion_type}")
+        plt.xlabel("X Position")
+        plt.ylabel("Y Position")
+        
+        for pos in positions:
+            plt.scatter(pos[0], pos[1], c='b')
+            plt.pause(0.05)
+        
+        plt.show()
+
+# Example Usage
+if __name__ == "__main__":
+    motion = MotionAutomation()
+    
+    print("Applying Walking Motion")
+    motion_positions = motion.apply_motion("Character1", "walk", preview=True)
+    print("Motion Path:", motion_positions)
+    
+    print("Applying Jumping Motion")
+    motion_positions = motion.apply_motion("Character1", "jump", preview=True)
+    print("Motion Path:", motion_positions)
+    
+    print("Applying Bouncing Motion")
+    motion_positions = motion.apply_motion("Character1", "bounce", preview=True)
+    print("Motion Path:", motion_positions)
+    
+    print("Applying Zigzag Motion")
+    motion_positions = motion.apply_motion("Character1", "zigzag", preview=True)
+    print("Motion Path:", motion_positions)
