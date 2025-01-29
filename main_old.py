@@ -1,13 +1,4 @@
 import sys
-from PyQt6.QtWidgets import QApplication,QFileDialog, QMainWindow
-from ui_setup import setup_ui
-from asset_manager import AssetManager
-from scene_generator import SceneGenerator
-from timeline_manager import TimelineManager
-from motion_automation import MotionAutomation
-from audio_integration import AudioIntegration
-from timeline_editor import TimelineEditor
-
 import os
 import cv2
 import numpy as np
@@ -35,41 +26,174 @@ class AnimationTool(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        # Set up the main window
+        self.setWindowTitle("Animation Tool - Professional UI")
+        self.setGeometry(100, 100, 1400, 900)
+
         # Initialize components
         self.scene_generator = SceneGenerator()
         self.motion_automation = MotionAutomation()
         self.audio_integration = AudioIntegration()
         self.timeline_editor = TimelineEditor()
 
-        self.asset_manager = AssetManager(self.scene_generator, None)  # Preview scene set in setup_ui
-        self.timeline_manager = TimelineManager(None)  # Set later in setup_ui
+        # Set up the UI Layout
+        self.setup_ui()
 
-        # Setup UI
-        setup_ui(self)
+    def setup_ui(self):
+        """Setup the main UI layout similar to Animaker."""
+        
+        # ====== Toolbar (Top) ======
+        toolbar = self.menuBar()
+        file_menu = toolbar.addMenu("File")
 
-    def new_project(self):
-        """Start a new project."""
-        print("New project started!")
+        new_action = QAction(QIcon(), "New Project", self)
+        new_action.triggered.connect(self.new_project)
+        file_menu.addAction(new_action)
 
-    def load_project(self):
-        """Load an existing project."""
-        project_file, _ = QFileDialog.getOpenFileName(self, "Open Project", "", "JSON Files (*.json)")
-        if project_file:
-            print(f"Loaded project: {project_file}")
+        open_action = QAction(QIcon(), "Open Project", self)
+        open_action.triggered.connect(self.load_project)
+        file_menu.addAction(open_action)
 
-    def save_project(self):
-        """Save the current project."""
-        project_file, _ = QFileDialog.getSaveFileName(self, "Save Project", "", "JSON Files (*.json)")
-        if project_file:
-            print(f"Project saved: {project_file}")
+        save_action = QAction(QIcon(), "Save Project", self)
+        save_action.triggered.connect(self.save_project)
+        file_menu.addAction(save_action)
 
-    def export_video(self):
-        """Export the animation as an MP4 video."""
-        export_file, _ = QFileDialog.getSaveFileName(self, "Export Video", "", "MP4 Video (*.mp4)")
-        if export_file:
-            command = f"ffmpeg -framerate 30 -i output/scenes/%04d.png -i output/audio/final_audio.mp3 -c:v libx264 -pix_fmt yuv420p {export_file}"
-            os.system(command)
-            print(f"Video exported: {export_file}")
+        export_action = QAction(QIcon(), "Export Video", self)
+        export_action.triggered.connect(self.export_video)
+        file_menu.addAction(export_action)
+
+        # ====== Main Layout ======
+        central_widget = QWidget()
+        main_layout = QHBoxLayout(central_widget)
+        self.setCentralWidget(central_widget)
+
+        # ====== Left Panel (Assets) ======
+        self.asset_list = QListWidget()
+        self.asset_list.addItems(["Backgrounds", "Characters", "Props", "Audio"])
+        self.asset_list.itemClicked.connect(self.asset_selected)
+
+        left_panel = QVBoxLayout()
+        left_panel.addWidget(QLabel("Assets Library"))
+        left_panel.addWidget(self.asset_list)
+
+        left_frame = QFrame()
+        left_frame.setLayout(left_panel)
+        left_frame.setFrameShape(QFrame.Shape.StyledPanel)
+
+        # ====== Center Panel (Live Preview) ======
+        self.preview_label = QLabel("Live Preview")
+        self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview_label.setStyleSheet("border: 2px solid black;")
+
+        # Increase Animation Preview Size & Make It Resizable
+        self.preview_scene = QGraphicsScene()
+        self.preview_view = QGraphicsView(self.preview_scene)
+        self.preview_view.setMinimumSize(600, 400)  # ✅ Increase default size
+        self.preview_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)  # ✅ Make resizable
+
+        # Use Splitter to Allow Resizing
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.addWidget(self.preview_view)
+
+        center_layout = QVBoxLayout()
+        center_layout.addWidget(QLabel("Animation Preview"))
+        center_layout.addWidget(splitter)
+
+        center_frame = QFrame()
+        center_frame.setLayout(center_layout)
+        center_frame.setFrameShape(QFrame.Shape.StyledPanel)
+
+        main_layout.addWidget(center_frame)  # ✅ Update main layout
+
+        # ====== Bottom Panel (Timeline) ======
+        self.timeline_label = QLabel("Timeline Editor")
+        self.timeline_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.timeline_list = QListWidget()
+        self.timeline_list.addItems(["Scene Start", "Character Entry", "Motion Applied"])
+
+        bottom_layout = QVBoxLayout()
+        bottom_layout.addWidget(QLabel("Animation Timeline"))
+        bottom_layout.addWidget(self.timeline_list)
+
+        bottom_frame = QFrame()
+        bottom_frame.setLayout(bottom_layout)
+        bottom_frame.setFrameShape(QFrame.Shape.StyledPanel)
+
+        # ====== Splitter (Allows resizing of panels) ======
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(left_frame)
+        splitter.addWidget(center_frame)
+        splitter.setStretchFactor(1, 2)
+
+        main_layout.addWidget(splitter)
+
+        # ====== Bottom Timeline ======
+        main_layout.addWidget(bottom_frame)
+
+        # ====== Buttons Panel ======
+        button_panel = QVBoxLayout()
+
+        self.scene_btn = QPushButton("Generate Scene")
+        self.scene_btn.clicked.connect(self.generate_scene)
+        button_panel.addWidget(self.scene_btn)
+
+        self.motion_btn = QPushButton("Add Motion")
+        self.motion_btn.clicked.connect(self.add_motion)
+        button_panel.addWidget(self.motion_btn)
+
+        self.audio_btn = QPushButton("Add Audio")
+        self.audio_btn.clicked.connect(self.add_audio)
+        button_panel.addWidget(self.audio_btn)
+
+        self.preview_btn = QPushButton("Preview Animation")
+        self.preview_btn.clicked.connect(self.preview_animation)
+        button_panel.addWidget(self.preview_btn)
+
+        self.export_btn = QPushButton("Export Video")
+        self.export_btn.clicked.connect(self.export_video)
+        button_panel.addWidget(self.export_btn)
+
+        main_layout.addLayout(button_panel)
+
+        # ====== Bottom Panel (Timeline) ======
+        self.timeline_scene = QGraphicsScene()
+        self.timeline_view = QGraphicsView(self.timeline_scene)
+
+        bottom_layout = QVBoxLayout()
+        bottom_layout.addWidget(QLabel("Animation Timeline"))
+        bottom_layout.addWidget(self.timeline_view)
+
+        bottom_frame = QFrame()
+        bottom_frame.setLayout(bottom_layout)
+        bottom_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        
+        main_layout.addWidget(bottom_frame)
+
+        # Enable Drag-and-Drop for Asset Library
+        self.asset_list.setDragEnabled(True)
+        self.asset_list.setAcceptDrops(True)
+
+        # Enable dropping assets into the scene
+        #self.preview_scene = QGraphicsScene()
+        #self.preview_view.setScene(self.preview_scene)
+        self.preview_view.setAcceptDrops(True)
+
+        # Connect drag-and-drop event
+        self.preview_view.dragEnterEvent = self.dragEnterEvent
+        self.preview_view.dropEvent = self.dropEvent
+
+        # Make Timeline Interactive
+        self.timeline_list.setDragEnabled(True)
+        self.timeline_list.setAcceptDrops(True)
+
+        self.timeline_view.setAcceptDrops(True)
+        self.timeline_view.dragEnterEvent = self.dragEnterEvent
+        self.timeline_view.dropEvent = self.dropEvent
+
+        # Initialize QGraphicsScene for preview
+        self.preview_scene = QGraphicsScene()
+        self.preview_view.setScene(self.preview_scene)
 
     def populate_asset_categories(self):
         """List asset categories (Backgrounds, Characters, Props, Audio) in the library."""
@@ -151,6 +275,18 @@ class AnimationTool(QMainWindow):
         """Start a new project."""
         print("New project started!")
 
+    def load_project(self):
+        """Load an existing project."""
+        project_file, _ = QFileDialog.getOpenFileName(self, "Open Project", "", "JSON Files (*.json)")
+        if project_file:
+            print(f"Loaded project: {project_file}")
+
+    def save_project(self):
+        """Save the current project."""
+        project_file, _ = QFileDialog.getSaveFileName(self, "Save Project", "", "JSON Files (*.json)")
+        if project_file:
+            print(f"Project saved: {project_file}")
+
     def generate_scene(self):
         """Generate a scene and display it in the Animation Preview."""
         try:
@@ -231,6 +367,15 @@ class AnimationTool(QMainWindow):
         self.movie = QMovie(gif_path)
         self.preview_label.setMovie(self.movie)
         self.movie.start()
+
+    def export_video(self):
+        """Export the animation as an MP4 video."""
+        export_file, _ = QFileDialog.getSaveFileName(self, "Export Video", "", "MP4 Video (*.mp4)")
+
+        if export_file:
+            command = f"ffmpeg -framerate 30 -i output/scenes/%04d.png -i output/audio/final_audio.mp3 -c:v libx264 -pix_fmt yuv420p {export_file}"
+            os.system(command)
+            print(f"Video exported: {export_file}")
 
 
 if __name__ == "__main__":
