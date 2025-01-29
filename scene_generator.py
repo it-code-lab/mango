@@ -40,12 +40,16 @@ class SceneGenerator:
         return file_name
 
     def generate_scene(self, scene_name, style="realistic", resolution=(1920, 1080)):
-        """Generate a scene with assets and store it in the output folder."""
+        """Generate a scene with background and save it."""
         scene_dir = "output/scenes"
         os.makedirs(scene_dir, exist_ok=True)
 
+        # Select a default background
+        backgrounds = self.get_assets_by_category("backgrounds")
+        bg_path = os.path.join(self.asset_library_path, "backgrounds", backgrounds[0]) if backgrounds else None
+
+        img = Image.open(bg_path) if bg_path else Image.new('RGB', resolution, color=self._get_background_color(style))
         file_name = os.path.join(scene_dir, f"{scene_name.lower().replace(' ', '_')}_{style}.png")
-        img = Image.new('RGB', resolution, color=self._get_background_color(style))
         img.save(file_name)
         return file_name
 
